@@ -1,0 +1,38 @@
+Design — Seção 5: Fases de Desenvolvimento
+Estratégia: entregar valor real em cada fase, começando pelo núcleo clínico que a Lilian usa todo dia.
+
+Fase 1 — Fundação + Prontuário (MVP core) ~3 semanas
+Objetivo: Lilian consegue substituir o papel/Notion completamente
+
+Setup do projeto (Next.js + Supabase + Tailwind + shadcn)
+Autenticação (cadastro, login, recuperação de senha)
+Cadastro e busca de pacientes (+ termo LGPD)
+Prontuário completo (4 abas)
+Evolução clínica por sessão
+Avaliação neuropsicológica
+Upload de documentos
+Fase 2 — Agenda ~1,5 semana
+Objetivo: Lilian abandona o Google Agenda
+
+Calendário (diário / semanal / mensal)
+Criar, editar, cancelar consultas
+Tipos com cores diferentes
+Status de consulta (agendado → confirmado → realizado)
+Dashboard com agenda do dia e alertas
+Fase 3 — Qualidade e Venda ~1 semana
+Objetivo: sistema pronto para apresentar e vender
+
+Responsividade mobile polida
+Onboarding (tela de boas-vindas para novos usuários)
+Página de landing pública (apresentação + CTA de cadastro)
+Fluxo de cadastro de novo psicólogo
+Configurações de perfil e consultório
+Testes com Lilian + correções de feedback
+Fase 4 — Monetização (pós-validação)
+Ativa após aprovação de Lilian
+
+Integração Stripe ou Asaas (assinatura mensal)
+Período de trial de 14 dias
+Página de planos e cobrança
+E-mail transacional (boas-vindas, lembrete de pagamento)
+Total até produto vendável: ~6 semanas
