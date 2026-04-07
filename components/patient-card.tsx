@@ -35,18 +35,18 @@ export function PatientCard({ patient, lastSessionDate }: PatientCardProps) {
             <Badge
               variant="outline"
               className={
-                patient.status === 'active'
+                patient.status === 'acompanhamento'
                   ? 'border-[#6BAE8E] text-[#6BAE8E] shrink-0'
-                  : patient.status === 'inactive'
-                  ? 'border-[#E8A838] text-[#E8A838] shrink-0'
-                  : 'border-muted-foreground text-muted-foreground shrink-0'
+                  : patient.status === 'avaliacao'
+                  ? 'border-[#7B68C8] text-[#7B68C8] shrink-0'
+                  : 'border-[#64748B] text-[#64748B] shrink-0'
               }
             >
-              {patient.status === 'active'
-                ? 'Ativo'
-                : patient.status === 'inactive'
-                ? 'Inativo'
-                : 'Arquivado'}
+              {patient.status === 'acompanhamento'
+                ? 'Acompanhamento'
+                : patient.status === 'avaliacao'
+                ? 'Em Avaliação'
+                : 'Alta'}
             </Badge>
           </div>
 

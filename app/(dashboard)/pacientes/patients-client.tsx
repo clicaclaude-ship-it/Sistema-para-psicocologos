@@ -10,7 +10,7 @@ import { PatientCard } from '@/components/patient-card'
 import type { Patient } from '@/types/database'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 
-type StatusFilter = 'all' | 'active' | 'inactive'
+type StatusFilter = 'all' | 'acompanhamento' | 'avaliacao' | 'alta'
 
 interface PatientsClientProps {
   patients: Patient[]
@@ -24,8 +24,7 @@ export function PatientsClient({ patients, lastSessionMap }: PatientsClientProps
 
   const filtered = useMemo(() => {
     return patients.filter((p) => {
-      if (statusFilter === 'active' && p.status !== 'active') return false
-      if (statusFilter === 'inactive' && p.status !== 'inactive') return false
+      if (statusFilter !== 'all' && p.status !== statusFilter) return false
 
       if (!debouncedSearch) return true
 
@@ -40,8 +39,9 @@ export function PatientsClient({ patients, lastSessionMap }: PatientsClientProps
 
   const statusOptions: { value: StatusFilter; label: string }[] = [
     { value: 'all', label: 'Todos' },
-    { value: 'active', label: 'Ativos' },
-    { value: 'inactive', label: 'Inativos' },
+    { value: 'acompanhamento', label: 'Acompanhamento' },
+    { value: 'avaliacao', label: 'Em Avaliação' },
+    { value: 'alta', label: 'Alta' },
   ]
 
   return (

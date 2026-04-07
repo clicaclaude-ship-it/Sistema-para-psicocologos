@@ -103,6 +103,8 @@ interface FormState {
   duration_min: number
   type: Appointment['type']
   notes: string
+  recurrence: Appointment['recurrence']
+  recurrence_end_date: string
 }
 
 const DEFAULT_FORM: FormState = {
@@ -112,6 +114,8 @@ const DEFAULT_FORM: FormState = {
   duration_min: 50,
   type: 'consulta',
   notes: '',
+  recurrence: 'none',
+  recurrence_end_date: '',
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -150,7 +154,7 @@ export default function AgendaPage() {
         .from('patients')
         .select('id, full_name')
         .eq('psychologist_id', userData.user.id)
-        .eq('status', 'active')
+        .in('status', ['acompanhamento', 'avaliacao'])
         .order('full_name')
       setPatients(data ?? [])
     }
@@ -191,7 +195,7 @@ export default function AgendaPage() {
         const patientName = apt.patients?.full_name ?? 'Paciente'
         return {
           id: apt.id,
-          title: `${patientName} — ${TYPE_LABELS[apt.type]}`,
+          title: `${apt.recurrence !== 'none' ? '↻ ' : ''}${patientName} — ${TYPE_LABELS[apt.type]}`,
           start,
           end,
           resource: { ...apt, patient_name: patientName },
@@ -247,7 +251,7 @@ export default function AgendaPage() {
 
     const scheduled_at = new Date(`${form.date}T${form.time}:00`).toISOString()
 
-    const { error } = await supabase.from('appointments').insert({
+    const { data: created, error } = await supabase.from('appointments').insert({
       psychologist_id: userData.user.id,
       patient_id: form.patient_id,
       scheduled_at,
@@ -255,7 +259,41 @@ export default function AgendaPage() {
       type: form.type,
       notes: form.notes || null,
       status: 'agendado',
-    })
+      recurrence: form.recurrence,
+      recurrence_end_date: form.recurrence_end_date || null,
+    }).select().single()
+
+    // Create recurring appointments
+    if (!error && created && form.recurrence !== 'none' && form.recurrence_end_date) {
+      const endDate = new Date(form.recurrence_end_date + 'T23:59:59')
+      const recurrences: object[] = []
+      let current = new Date(`${form.date}T${form.time}:00`)
+      while (true) {
+        if (form.recurrence === 'monthly') {
+          current = new Date(current)
+          current.setMonth(current.getMonth() + 1)
+        } else {
+          const days = form.recurrence === 'weekly' ? 7 : 14
+          current = new Date(current.getTime() + days * 86400000)
+        }
+        if (current > endDate) break
+        recurrences.push({
+          psychologist_id: userData.user.id,
+          patient_id: form.patient_id,
+          scheduled_at: current.toISOString(),
+          duration_min: form.duration_min,
+          type: form.type,
+          notes: form.notes || null,
+          status: 'agendado',
+          recurrence: form.recurrence,
+          recurrence_end_date: form.recurrence_end_date || null,
+          recurrence_parent_id: created.id,
+        })
+      }
+      if (recurrences.length > 0) {
+        await supabase.from('appointments').insert(recurrences)
+      }
+    }
 
     if (error) {
       toast.error('Erro ao criar consulta', { description: error.message })
@@ -475,6 +513,34 @@ export default function AgendaPage() {
                     )}
                   </select>
                 </div>
+              </div>
+
+              {/* Recurrence */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Repetir</Label>
+                  <select
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={form.recurrence}
+                    onChange={(e) => setForm({ ...form, recurrence: e.target.value as Appointment['recurrence'] })}
+                  >
+                    <option value="none">Não repetir</option>
+                    <option value="weekly">Toda semana</option>
+                    <option value="biweekly">A cada 2 semanas</option>
+                    <option value="monthly">Todo mês</option>
+                  </select>
+                </div>
+                {form.recurrence !== 'none' && (
+                  <div className="space-y-1.5">
+                    <Label>Repetir até</Label>
+                    <Input
+                      type="date"
+                      value={form.recurrence_end_date}
+                      min={form.date}
+                      onChange={(e) => setForm({ ...form, recurrence_end_date: e.target.value })}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Notes */}

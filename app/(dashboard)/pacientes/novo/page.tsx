@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import { DatePicker } from '@/components/date-picker'
 import { createClient } from '@/lib/supabase/client'
 import { patientSchema, type PatientFormData } from '@/lib/validations/patient'
 import { maskCPF, maskPhone } from '@/lib/utils'
@@ -69,7 +70,7 @@ export default function NovoPackientePage() {
         guardian_name: data.guardian_name || null,
         main_complaint: data.main_complaint || null,
         brief_history: data.brief_history || null,
-        status: 'active',
+        status: 'acompanhamento',
         consent_signed_at: data.lgpd_consent ? new Date().toISOString() : null,
       })
       .select()
@@ -121,11 +122,10 @@ export default function NovoPackientePage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="birth_date">Data de nascimento</Label>
-                <Input
-                  id="birth_date"
-                  type="date"
-                  {...register('birth_date')}
+                <Label>Data de nascimento</Label>
+                <DatePicker
+                  value={watch('birth_date') ?? ''}
+                  onChange={(val) => setValue('birth_date', val)}
                 />
               </div>
 

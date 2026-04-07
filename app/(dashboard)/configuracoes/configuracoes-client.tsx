@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
-import { Loader2, Save, AlertTriangle, KeyRound, User } from 'lucide-react'
+import { Loader2, Save, AlertTriangle, KeyRound, User, MessageCircle, Send } from 'lucide-react'
 import { z } from 'zod'
 
 import { Button } from '@/components/ui/button'
@@ -54,6 +54,47 @@ export function ConfiguracoesClient({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [deleting, setDeleting] = useState(false)
+  const [savingWa, setSavingWa] = useState(false)
+  const [sendingReminders, setSendingReminders] = useState(false)
+  const [sendingBirthdays, setSendingBirthdays] = useState(false)
+  const [wa, setWa] = useState({
+    whatsapp_provider: (psychologist?.whatsapp_provider ?? 'evolution') as 'evolution' | 'zapi',
+    whatsapp_api_url: psychologist?.whatsapp_api_url ?? '',
+    whatsapp_instance: psychologist?.whatsapp_instance ?? '',
+    whatsapp_token: psychologist?.whatsapp_token ?? '',
+    whatsapp_enabled: psychologist?.whatsapp_enabled ?? false,
+    whatsapp_reminder_enabled: psychologist?.whatsapp_reminder_enabled ?? false,
+    whatsapp_reminder_message: psychologist?.whatsapp_reminder_message ?? 'Olá {{nome}}, lembrando da sua consulta amanhã às {{horario}}. Até lá! 😊',
+    whatsapp_birthday_enabled: psychologist?.whatsapp_birthday_enabled ?? false,
+    whatsapp_birthday_message: psychologist?.whatsapp_birthday_message ?? 'Olá {{nome}}, hoje é um dia muito especial! Desejo a você um feliz aniversário cheio de saúde, alegria e realizações! 🎂🎉',
+  })
+
+  async function saveWhatsApp() {
+    setSavingWa(true)
+    const supabase = createClient()
+    const { error } = await supabase.from('psychologists').update(wa).eq('id', userId)
+    if (error) toast.error('Erro ao salvar configurações WhatsApp', { description: error.message })
+    else toast.success('Configurações WhatsApp salvas!')
+    setSavingWa(false)
+  }
+
+  async function sendReminders() {
+    setSendingReminders(true)
+    const res = await fetch('/api/whatsapp/send-reminders', { method: 'POST' })
+    const data = await res.json()
+    if (res.ok) toast.success(`${data.sent} lembrete(s) enviado(s)!`)
+    else toast.error('Erro ao enviar lembretes', { description: data.error })
+    setSendingReminders(false)
+  }
+
+  async function sendBirthdays() {
+    setSendingBirthdays(true)
+    const res = await fetch('/api/whatsapp/send-birthdays', { method: 'POST' })
+    const data = await res.json()
+    if (res.ok) toast.success(`${data.sent} mensagem(ns) de aniversário enviada(s)!`)
+    else toast.error('Erro ao enviar aniversários', { description: data.error })
+    setSendingBirthdays(false)
+  }
 
   const profileForm = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -320,6 +361,135 @@ export function ConfiguracoesClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* WhatsApp */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <MessageCircle className="w-4 h-4 text-[#6BAE8E]" />
+            Automação WhatsApp
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* API Config */}
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-[#1E2A38]">Configuração da API</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Provedor</Label>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={wa.whatsapp_provider}
+                  onChange={(e) => setWa({ ...wa, whatsapp_provider: e.target.value as 'evolution' | 'zapi' })}
+                >
+                  <option value="evolution">Evolution API (gratuita)</option>
+                  <option value="zapi">Z-API (pago)</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>URL da API</Label>
+                <Input
+                  placeholder="https://minha-evolution.app"
+                  value={wa.whatsapp_api_url}
+                  onChange={(e) => setWa({ ...wa, whatsapp_api_url: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nome da instância</Label>
+                <Input
+                  placeholder="minha-instancia"
+                  value={wa.whatsapp_instance}
+                  onChange={(e) => setWa({ ...wa, whatsapp_instance: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Token / API Key</Label>
+                <Input
+                  type="password"
+                  placeholder="Seu token de acesso"
+                  value={wa.whatsapp_token}
+                  onChange={(e) => setWa({ ...wa, whatsapp_token: e.target.value })}
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Variáveis disponíveis nas mensagens: <code className="bg-muted px-1 rounded">{'{{nome}}'}</code> <code className="bg-muted px-1 rounded">{'{{horario}}'}</code> <code className="bg-muted px-1 rounded">{'{{data}}'}</code>
+            </p>
+          </div>
+
+          <Separator />
+
+          {/* Reminders */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-[#1E2A38]">Lembrete de consulta (1 dia antes)</p>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={wa.whatsapp_reminder_enabled}
+                  onChange={(e) => setWa({ ...wa, whatsapp_reminder_enabled: e.target.checked })}
+                />
+                <div className="w-10 h-6 bg-muted rounded-full peer peer-checked:bg-[#4F7CAC] transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4" />
+              </label>
+            </div>
+            <textarea
+              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-base min-h-[80px]"
+              value={wa.whatsapp_reminder_message}
+              onChange={(e) => setWa({ ...wa, whatsapp_reminder_message: e.target.value })}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={sendReminders}
+              disabled={sendingReminders || !wa.whatsapp_api_url}
+            >
+              {sendingReminders ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              Enviar lembretes de amanhã agora
+            </Button>
+          </div>
+
+          <Separator />
+
+          {/* Birthdays */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-[#1E2A38]">Mensagem de aniversário</p>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={wa.whatsapp_birthday_enabled}
+                  onChange={(e) => setWa({ ...wa, whatsapp_birthday_enabled: e.target.checked })}
+                />
+                <div className="w-10 h-6 bg-muted rounded-full peer peer-checked:bg-[#4F7CAC] transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4" />
+              </label>
+            </div>
+            <p className="text-xs text-muted-foreground">Variável disponível: <code className="bg-muted px-1 rounded">{'{{nome}}'}</code></p>
+            <textarea
+              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-base min-h-[80px]"
+              value={wa.whatsapp_birthday_message}
+              onChange={(e) => setWa({ ...wa, whatsapp_birthday_message: e.target.value })}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={sendBirthdays}
+              disabled={sendingBirthdays || !wa.whatsapp_api_url}
+            >
+              {sendingBirthdays ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              Enviar aniversariantes de hoje agora
+            </Button>
+          </div>
+
+          <Button onClick={saveWhatsApp} disabled={savingWa} className="gap-1.5">
+            {savingWa ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Salvar configurações WhatsApp
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   )
 }

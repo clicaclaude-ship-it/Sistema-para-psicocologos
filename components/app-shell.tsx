@@ -11,6 +11,7 @@ import {
   LogOut,
   User,
   ChevronDown,
+  FileSignature,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -31,6 +32,7 @@ const navLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/pacientes', label: 'Pacientes', icon: Users },
   { href: '/agenda', label: 'Agenda', icon: Calendar },
+  { href: '/contratos', label: 'Contratos', icon: FileSignature },
   { href: '/configuracoes', label: 'Configurações', icon: Settings },
 ]
 

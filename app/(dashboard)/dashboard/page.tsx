@@ -68,12 +68,12 @@ export default async function DashboardPage() {
       .from('patients')
       .select('*', { count: 'exact' })
       .eq('psychologist_id', user.id)
-      .eq('status', 'active'),
+      .in('status', ['acompanhamento', 'avaliacao']),
     supabase
       .from('patients')
       .select('*')
       .eq('psychologist_id', user.id)
-      .eq('status', 'active')
+      .in('status', ['acompanhamento', 'avaliacao'])
       .order('created_at', { ascending: false })
       .limit(5),
     // Patients without any clinical note in the last 30 days
@@ -81,7 +81,7 @@ export default async function DashboardPage() {
       .from('patients')
       .select('*')
       .eq('psychologist_id', user.id)
-      .eq('status', 'active')
+      .in('status', ['acompanhamento', 'avaliacao'])
       .limit(20),
     // Today's appointments with patient name
     supabase
@@ -327,12 +327,14 @@ export default async function DashboardPage() {
                     <Badge
                       variant="outline"
                       className={
-                        p.status === 'active'
+                        p.status === 'acompanhamento'
                           ? 'border-[#6BAE8E] text-[#6BAE8E]'
+                          : p.status === 'avaliacao'
+                          ? 'border-[#7B68C8] text-[#7B68C8]'
                           : 'border-muted-foreground text-muted-foreground'
                       }
                     >
-                      {p.status === 'active' ? 'Ativo' : 'Inativo'}
+                      {p.status === 'acompanhamento' ? 'Acompanhamento' : p.status === 'avaliacao' ? 'Em Avaliação' : 'Alta'}
                     </Badge>
                   </Link>
                 )

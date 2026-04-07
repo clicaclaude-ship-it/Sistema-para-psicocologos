@@ -32,6 +32,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { SessionForm } from '@/components/session-form'
 import { NeuroEvalForm } from '@/components/neuro-eval-form'
 import { DocumentUpload } from '@/components/document-upload'
+import { LaudoFormComponent as LaudoForm } from '@/components/laudo-form'
 import { calcAge, formatDate, maskCPF, maskPhone } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { Appointment, Patient, ClinicalNote, NeuroEvaluation, Document } from '@/types/database'
@@ -167,12 +168,14 @@ export function PatientRecord({
               <Badge
                 variant="outline"
                 className={
-                  patient.status === 'active'
+                  patient.status === 'acompanhamento'
                     ? 'border-[#6BAE8E] text-[#6BAE8E]'
-                    : 'border-[#E8A838] text-[#E8A838]'
+                    : patient.status === 'avaliacao'
+                    ? 'border-[#7B68C8] text-[#7B68C8]'
+                    : 'border-[#64748B] text-[#64748B]'
                 }
               >
-                {patient.status === 'active' ? 'Ativo' : patient.status === 'inactive' ? 'Inativo' : 'Arquivado'}
+                {patient.status === 'acompanhamento' ? 'Acompanhamento' : patient.status === 'avaliacao' ? 'Em Avaliação' : 'Alta/Desligado'}
               </Badge>
               {patient.consent_signed_at && (
                 <Badge
@@ -203,7 +206,7 @@ export function PatientRecord({
       {/* Tabs */}
       <Tabs defaultValue="dados">
         <div className="overflow-x-auto mb-6 -mx-4 sm:mx-0 px-4 sm:px-0">
-          <TabsList className="flex min-w-max w-full sm:grid sm:grid-cols-4">
+          <TabsList className="flex min-w-max w-full sm:grid sm:grid-cols-5">
             <TabsTrigger value="dados" className="text-xs sm:text-sm gap-1.5 flex-shrink-0">
               <User className="w-3.5 h-3.5 hidden sm:block" />
               Dados
@@ -219,6 +222,10 @@ export function PatientRecord({
             <TabsTrigger value="documentos" className="text-xs sm:text-sm gap-1.5 flex-shrink-0">
               <FileText className="w-3.5 h-3.5 hidden sm:block" />
               Documentos
+            </TabsTrigger>
+            <TabsTrigger value="laudo" className="text-xs sm:text-sm gap-1.5 flex-shrink-0">
+              <CalendarDays className="w-3.5 h-3.5 hidden sm:block" />
+              Laudo
             </TabsTrigger>
           </TabsList>
         </div>
@@ -505,6 +512,11 @@ export function PatientRecord({
         <TabsContent value="documentos">
           <DocumentUpload patientId={patient.id} documents={documents} />
         </TabsContent>
+
+        {/* Tab 5 — Laudo */}
+        <TabsContent value="laudo">
+          <LaudoForm patientId={patient.id} patient={patient} />
+        </TabsContent>
       </Tabs>
 
       {/* Session form dialog */}
@@ -596,9 +608,9 @@ export function PatientRecord({
                     })
                   }
                 >
-                  <option value="active">Ativo</option>
-                  <option value="inactive">Inativo</option>
-                  <option value="archived">Arquivado</option>
+                  <option value="acompanhamento">Acompanhamento</option>
+                  <option value="avaliacao">Em Avaliação</option>
+                  <option value="alta">Alta/Desligado</option>
                 </select>
               </div>
             </div>
