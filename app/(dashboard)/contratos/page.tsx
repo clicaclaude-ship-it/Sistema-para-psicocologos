@@ -1,12 +1,13 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { FileSignature, Plus, CheckCircle, Clock, Copy } from 'lucide-react'
+import { FileSignature, Plus, CheckCircle, Clock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { formatDate } from '@/lib/utils'
 import type { Contract, Patient } from '@/types/database'
+import { CopiarLinkBtn } from './contratos-client'
 
 export default async function ContratosPage() {
   const supabase = await createClient()
@@ -79,24 +80,7 @@ export default async function ContratosPage() {
                     )}
                   </div>
                   {!c.signed_at && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5 shrink-0"
-                      onClick={() => {}}
-                      asChild
-                    >
-                      <a
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          navigator.clipboard.writeText(signLink)
-                        }}
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                        Copiar link
-                      </a>
-                    </Button>
+                    <CopiarLinkBtn link={signLink} />
                   )}
                 </CardContent>
               </Card>
