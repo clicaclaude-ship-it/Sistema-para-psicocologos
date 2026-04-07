@@ -1,13 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { CheckCircle, Loader2, Shield } from 'lucide-react'
+import { CheckCircle, Loader2, Shield, FileDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { maskCPF } from '@/lib/utils'
+import { gerarPdfContrato } from '@/app/(dashboard)/contratos/contratos-client'
 
 interface AssinarClientProps {
   contractId: string
@@ -16,8 +17,12 @@ interface AssinarClientProps {
   patientName: string
   psychName: string
   psychCrp: string
+  psychClinic: string | null
   signedAt: string | null
   signedName: string | null
+  signedCpf: string | null
+  signedIp: string | null
+  contentHash: string | null
 }
 
 export function AssinarClient({
@@ -25,58 +30,102 @@ export function AssinarClient({
   title,
   content,
   patientName,
+  psychName,
+  psychCrp,
+  psychClinic,
   signedAt,
   signedName,
+  signedCpf,
+  signedIp,
+  contentHash,
 }: AssinarClientProps) {
   const [name, setName] = useState(patientName)
   const [cpf, setCpf] = useState('')
   const [agreed, setAgreed] = useState(false)
   const [signing, setSigning] = useState(false)
   const [done, setDone] = useState(!!signedAt)
-  const [finalName, setFinalName] = useState(signedName ?? '')
+
+  // After signing, we'll store the data returned by the API
+  const [sigData, setSigData] = useState({
+    signed_at: signedAt ?? '',
+    signed_name: signedName ?? '',
+    signed_cpf: signedCpf ?? null as string | null,
+    signed_ip: signedIp ?? null as string | null,
+    content_hash: contentHash ?? null as string | null,
+  })
 
   async function handleSign() {
     if (!name.trim()) { toast.error('Informe seu nome completo'); return }
     if (!agreed) { toast.error('Você precisa concordar com os termos para assinar'); return }
 
     setSigning(true)
-
     const res = await fetch('/api/contratos/assinar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contractId, name: name.trim(), cpf }),
     })
-
     const data = await res.json()
 
     if (!res.ok) {
       toast.error('Erro ao assinar o contrato', { description: data.error })
     } else {
-      setFinalName(name.trim())
+      setSigData({
+        signed_at: data.signed_at,
+        signed_name: name.trim(),
+        signed_cpf: cpf || null,
+        signed_ip: data.signed_ip,
+        content_hash: data.content_hash,
+      })
       setDone(true)
       toast.success('Contrato assinado com sucesso!')
     }
     setSigning(false)
   }
 
+  function handlePdf() {
+    gerarPdfContrato({
+      title,
+      content,
+      signed_at: sigData.signed_at,
+      signed_name: sigData.signed_name,
+      signed_cpf: sigData.signed_cpf,
+      signed_ip: sigData.signed_ip,
+      content_hash: sigData.content_hash,
+      psychName,
+      psychCrp: psychCrp || null,
+      psychClinic,
+      patientName: sigData.signed_name || patientName,
+    })
+  }
+
   if (done) {
+    const dt = sigData.signed_at
+      ? new Date(sigData.signed_at).toLocaleString('pt-BR', {
+          day: '2-digit', month: '2-digit', year: 'numeric',
+          hour: '2-digit', minute: '2-digit',
+        })
+      : ''
+
     return (
       <div className="min-h-screen bg-[#F8F9FB] flex items-center justify-center px-4">
         <Card className="max-w-md w-full">
-          <CardContent className="py-12 text-center space-y-4">
+          <CardContent className="py-10 text-center space-y-4">
             <div className="w-16 h-16 rounded-full bg-[#6BAE8E]/10 flex items-center justify-center mx-auto">
               <CheckCircle className="w-8 h-8 text-[#6BAE8E]" />
             </div>
             <h1 className="text-xl font-bold text-[#1E2A38]">Contrato assinado!</h1>
             <p className="text-muted-foreground text-sm">
-              {signedAt
-                ? `Este contrato foi assinado por ${signedName ?? finalName} em ${new Date(signedAt).toLocaleDateString('pt-BR')}.`
-                : `O contrato foi assinado com sucesso por ${finalName}.`}
+              Assinado por <strong>{sigData.signed_name || patientName}</strong>
+              {dt && ` em ${dt}`}.
             </p>
             <div className="flex items-center gap-1.5 justify-center text-xs text-muted-foreground">
               <Shield className="w-3.5 h-3.5" />
-              Data, hora e IP registrados como prova de assinatura (Lei 14.063/2020)
+              Data, hora e IP registrados — Lei 14.063/2020
             </div>
+            <Button className="w-full gap-2" onClick={handlePdf}>
+              <FileDown className="w-4 h-4" />
+              Salvar / Imprimir PDF do contrato
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -151,11 +200,7 @@ export function AssinarClient({
               </span>
             </label>
 
-            <Button
-              className="w-full"
-              onClick={handleSign}
-              disabled={signing || !agreed}
-            >
+            <Button className="w-full" onClick={handleSign} disabled={signing || !agreed}>
               {signing
                 ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 : <CheckCircle className="mr-2 h-4 w-4" />}
@@ -166,8 +211,7 @@ export function AssinarClient({
               <Shield className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[#4F7CAC]" />
               <p>
                 Ao assinar, seu nome, CPF, endereço IP e a data/hora exata ficam registrados
-                junto ao hash SHA-256 do documento — constituindo assinatura eletrônica simples
-                nos termos da <strong>Lei 14.063/2020</strong>.
+                junto ao hash SHA-256 do documento — assinatura eletrônica simples nos termos da <strong>Lei 14.063/2020</strong>.
               </p>
             </div>
           </CardContent>

@@ -32,8 +32,12 @@ export default async function AssinarPage({ params }: { params: Promise<{ token:
       patientName={patient?.full_name ?? ''}
       psychName={psych?.full_name ?? ''}
       psychCrp={psych?.crp ?? ''}
+      psychClinic={psych?.clinic_name ?? null}
       signedAt={contract.signed_at as string | null}
       signedName={contract.signed_name as string | null}
+      signedCpf={contract.signed_cpf as string | null}
+      signedIp={contract.signed_ip as string | null}
+      contentHash={contract.content_hash as string | null}
     />
   )
 }

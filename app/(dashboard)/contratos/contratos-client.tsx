@@ -1,14 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Copy, Check, ExternalLink, Shield, Info } from 'lucide-react'
+import { Copy, Check, ExternalLink, Shield, Info, FileDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+
+// ─── Copiar link + Abrir contrato ────────────────────────────────────────────
 
 interface CopiarLinkBtnProps {
   token: string
@@ -31,13 +34,7 @@ export function CopiarLinkBtn({ token }: CopiarLinkBtnProps) {
 
   return (
     <div className="flex gap-2 shrink-0">
-      <Button
-        variant="outline"
-        size="sm"
-        className="gap-1.5"
-        onClick={handleCopy}
-        disabled={!link}
-      >
+      <Button variant="outline" size="sm" className="gap-1.5" onClick={handleCopy} disabled={!link}>
         {copied ? (
           <><Check className="w-3.5 h-3.5 text-green-600" />Copiado!</>
         ) : (
@@ -45,12 +42,7 @@ export function CopiarLinkBtn({ token }: CopiarLinkBtnProps) {
         )}
       </Button>
       {link && (
-        <Button
-          variant="default"
-          size="sm"
-          className="gap-1.5"
-          asChild
-        >
+        <Button variant="default" size="sm" className="gap-1.5" asChild>
           <a href={link} target="_blank" rel="noopener noreferrer">
             <ExternalLink className="w-3.5 h-3.5" />
             Abrir contrato
@@ -60,6 +52,123 @@ export function CopiarLinkBtn({ token }: CopiarLinkBtnProps) {
     </div>
   )
 }
+
+// ─── Gerar PDF ────────────────────────────────────────────────────────────────
+
+export interface PdfContractData {
+  title: string
+  content: string
+  signed_at: string
+  signed_name: string | null
+  signed_cpf: string | null
+  signed_ip: string | null
+  content_hash: string | null
+  psychName: string
+  psychCrp: string | null
+  psychClinic: string | null
+  patientName: string
+}
+
+export function gerarPdfContrato(data: PdfContractData) {
+  const dt = new Date(data.signed_at).toLocaleString('pt-BR', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  })
+
+  const esc = (s: string) =>
+    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>${esc(data.title)}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Times New Roman', serif; font-size: 12pt; color: #000; padding: 2cm; max-width: 21cm; margin: 0 auto; }
+  .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 24px; }
+  .header h2 { font-size: 14pt; font-weight: bold; }
+  .header p { font-size: 11pt; margin-top: 3px; }
+  .title { text-align: center; font-size: 15pt; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; }
+  .subtitle { text-align: center; font-size: 11pt; color: #444; margin-bottom: 28px; }
+  .content { white-space: pre-wrap; font-size: 12pt; line-height: 1.75; text-align: justify; margin-bottom: 48px; }
+  .sig-block { border-top: 2px solid #000; padding-top: 20px; margin-top: 16px; }
+  .sig-block h3 { font-size: 11pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; }
+  .sig-row { display: flex; gap: 8px; margin-bottom: 6px; font-size: 10.5pt; }
+  .sig-label { font-weight: bold; min-width: 180px; color: #333; }
+  .sig-value { flex: 1; word-break: break-all; }
+  .sig-hash { font-family: 'Courier New', monospace; font-size: 9pt; }
+  .legal { margin-top: 16px; padding: 10px 12px; border: 1px solid #bbb; font-size: 9.5pt; color: #555; line-height: 1.5; }
+  .sign-line { margin-top: 48px; display: flex; justify-content: center; }
+  .sign-line-inner { text-align: center; }
+  .sign-line-inner .line { border-bottom: 1px solid #000; width: 280px; margin-bottom: 6px; }
+  .sign-line-inner p { font-size: 11pt; }
+  @media print { body { padding: 1.5cm; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h2>${esc(data.psychName)}</h2>
+  ${data.psychCrp ? `<p>CRP ${esc(data.psychCrp)}</p>` : ''}
+  ${data.psychClinic ? `<p>${esc(data.psychClinic)}</p>` : ''}
+</div>
+
+<div class="title">${esc(data.title)}</div>
+<div class="subtitle">Paciente: ${esc(data.patientName)}</div>
+
+<div class="content">${esc(data.content)}</div>
+
+<div class="sig-block">
+  <h3>✅ Assinado Digitalmente</h3>
+  <div class="sig-row"><span class="sig-label">Nome do signatário:</span><span class="sig-value">${esc(data.signed_name ?? '—')}</span></div>
+  ${data.signed_cpf ? `<div class="sig-row"><span class="sig-label">CPF:</span><span class="sig-value">${esc(data.signed_cpf)}</span></div>` : ''}
+  <div class="sig-row"><span class="sig-label">Data e hora:</span><span class="sig-value">${esc(dt)}</span></div>
+  ${data.signed_ip ? `<div class="sig-row"><span class="sig-label">Endereço IP:</span><span class="sig-value">${esc(data.signed_ip)}</span></div>` : ''}
+  ${data.content_hash ? `<div class="sig-row"><span class="sig-label">Hash SHA-256:</span><span class="sig-value sig-hash">${esc(data.content_hash)}</span></div>` : ''}
+  <div class="legal">
+    Assinatura eletrônica simples nos termos da <strong>Lei 14.063/2020</strong>.
+    O hash SHA-256 garante a integridade do conteúdo do contrato no momento da assinatura.
+    O endereço IP identifica o dispositivo utilizado para assinar.
+  </div>
+</div>
+
+</body>
+</html>`
+
+  const win = window.open('', '_blank', 'width=900,height=800')
+  if (!win) {
+    toast.error('Bloqueio de pop-up detectado. Permita pop-ups para gerar o PDF.')
+    return
+  }
+  win.document.write(html)
+  win.document.close()
+  win.focus()
+  setTimeout(() => win.print(), 600)
+}
+
+interface GerarPdfBtnProps {
+  data: PdfContractData
+  size?: 'sm' | 'default'
+  variant?: 'outline' | 'default' | 'ghost'
+  label?: string
+}
+
+export function GerarPdfBtn({ data, size = 'sm', variant = 'outline', label = 'Gerar PDF' }: GerarPdfBtnProps) {
+  return (
+    <Button
+      variant={variant}
+      size={size}
+      className="gap-1.5"
+      onClick={() => gerarPdfContrato(data)}
+    >
+      <FileDown className="w-3.5 h-3.5" />
+      {label}
+    </Button>
+  )
+}
+
+// ─── Comprovante de assinatura ────────────────────────────────────────────────
 
 interface ComprovanteProps {
   contract: {
@@ -86,14 +195,9 @@ export function ComprovanteBtn({ contract }: ComprovanteProps) {
 
   return (
     <>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="gap-1.5 text-[#6BAE8E]"
-        onClick={() => setOpen(true)}
-      >
+      <Button variant="ghost" size="sm" className="gap-1.5 text-[#6BAE8E]" onClick={() => setOpen(true)}>
         <Shield className="w-3.5 h-3.5" />
-        Ver comprovante
+        Comprovante
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -118,17 +222,16 @@ export function ComprovanteBtn({ contract }: ComprovanteProps) {
               <Row label="Paciente" value={contract.patients?.full_name ?? '—'} />
               <Row label="Nome informado" value={contract.signed_name ?? '—'} />
               <Row label="CPF informado" value={contract.signed_cpf ?? 'Não informado'} />
-              <Row label="Data/hora da assinatura" value={dt(contract.signed_at)} />
+              <Row label="Data/hora" value={dt(contract.signed_at)} />
               <Row label="Endereço IP" value={contract.signed_ip ?? 'Não capturado'} />
-              <Row label="Hash SHA-256 do documento" value={contract.content_hash ?? 'Não disponível'} mono />
+              <Row label="Hash SHA-256" value={contract.content_hash ?? 'Não disponível'} mono />
             </div>
 
             <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted rounded-lg p-3">
               <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
               <p>
-                Este comprovante constitui prova de assinatura eletrônica simples nos termos da
-                Lei 14.063/2020. O hash SHA-256 garante que o conteúdo do contrato não foi alterado
-                após a assinatura. O IP registrado identifica o dispositivo usado no momento da assinatura.
+                Assinatura eletrônica simples — Lei 14.063/2020. O hash SHA-256 garante
+                que o conteúdo não foi alterado após a assinatura.
               </p>
             </div>
 
@@ -141,7 +244,7 @@ export function ComprovanteBtn({ contract }: ComprovanteProps) {
                   '─'.repeat(50),
                   `Contrato: ${contract.title}`,
                   `Paciente: ${contract.patients?.full_name ?? '—'}`,
-                  `Nome informado pelo signatário: ${contract.signed_name ?? '—'}`,
+                  `Nome informado: ${contract.signed_name ?? '—'}`,
                   `CPF informado: ${contract.signed_cpf ?? 'Não informado'}`,
                   `Data/hora: ${dt(contract.signed_at)}`,
                   `Endereço IP: ${contract.signed_ip ?? 'Não capturado'}`,
@@ -170,7 +273,7 @@ export function ComprovanteBtn({ contract }: ComprovanteProps) {
 function Row({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="flex flex-col sm:flex-row sm:gap-2">
-      <span className="text-muted-foreground font-medium min-w-[160px] shrink-0">{label}:</span>
+      <span className="text-muted-foreground font-medium min-w-[150px] shrink-0">{label}:</span>
       <span className={mono ? 'font-mono text-xs break-all' : 'break-words'}>{value}</span>
     </div>
   )
