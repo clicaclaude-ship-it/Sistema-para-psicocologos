@@ -25,19 +25,32 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  const isPublicPath = ['/', '/login', '/cadastro', '/recuperar-senha'].includes(
-    request.nextUrl.pathname
-  )
+  const { pathname } = request.nextUrl
 
+  // Paths that are always public (no auth needed)
+  const publicPaths = ['/', '/login', '/cadastro', '/recuperar-senha', '/privacidade', '/termos']
+  const isPublicPath =
+    publicPaths.includes(pathname) ||
+    pathname.startsWith('/assinar/') ||
+    pathname.startsWith('/auth/')
+
+  // Not logged in → redirect to login (except public paths)
   if (!user && !isPublicPath) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  if (user && ['/login', '/cadastro'].includes(request.nextUrl.pathname)) {
+  // Logged in but email not confirmed → redirect to confirm page
+  if (user && !user.email_confirmed_at) {
+    if (pathname !== '/confirmar-email') {
+      return NextResponse.redirect(new URL('/confirmar-email', request.url))
+    }
+    return supabaseResponse
+  }
+
+  // Logged in + confirmed → redirect away from login/cadastro
+  if (user && user.email_confirmed_at && ['/login', '/cadastro'].includes(pathname)) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
