@@ -14,6 +14,11 @@ export interface Psychologist {
   whatsapp_reminder_message: string | null
   whatsapp_birthday_enabled: boolean
   whatsapp_birthday_message: string | null
+  plan: 'trial' | 'active' | 'suspended' | 'cancelled' | null
+  subscription_status: string | null
+  trial_ends_at: string | null
+  stripe_customer_id: string | null
+  is_admin: boolean | null
   created_at: string
 }
 

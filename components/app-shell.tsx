@@ -12,6 +12,8 @@ import {
   User,
   ChevronDown,
   FileSignature,
+  AlertTriangle,
+  CreditCard,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -25,6 +27,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Psychologist } from '@/types/database'
 
@@ -39,6 +42,56 @@ const navLinks = [
 interface AppShellProps {
   children: React.ReactNode
   psychologist: Psychologist | null
+}
+
+function TrialBanner({ psychologist }: { psychologist: Psychologist | null }) {
+  const [loading, setLoading] = useState(false)
+
+  if (!psychologist) return null
+  const status = psychologist.subscription_status ?? 'trialing'
+  if (status === 'active') return null
+
+  const trialEnds = psychologist.trial_ends_at ? new Date(psychologist.trial_ends_at) : null
+  const daysLeft = trialEnds
+    ? Math.max(0, Math.ceil((trialEnds.getTime() - Date.now()) / 86400000))
+    : 0
+  const expired = status === 'trialing' && trialEnds && trialEnds < new Date()
+  const isPastDue = status === 'past_due'
+
+  if (!expired && !isPastDue && status === 'trialing' && daysLeft > 7) return null
+
+  async function handleAssinar() {
+    setLoading(true)
+    const res = await fetch('/api/stripe/checkout', { method: 'POST' })
+    const data = await res.json()
+    if (data.url) window.location.href = data.url
+    else setLoading(false)
+  }
+
+  const bg = expired || isPastDue ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'
+  const textColor = expired || isPastDue ? 'text-red-800' : 'text-amber-800'
+  const Icon = expired || isPastDue ? AlertTriangle : AlertTriangle
+
+  return (
+    <div className={`flex items-center justify-between gap-3 px-4 py-2 border-b text-xs ${bg} ${textColor}`}>
+      <div className="flex items-center gap-1.5">
+        <Icon className="w-3.5 h-3.5 shrink-0" />
+        {expired
+          ? 'Seu período de teste encerrou. Assine para continuar usando.'
+          : isPastDue
+          ? 'Pagamento pendente. Regularize para manter o acesso.'
+          : `${daysLeft} dia${daysLeft !== 1 ? 's' : ''} restante${daysLeft !== 1 ? 's' : ''} no seu período de teste.`}
+      </div>
+      <button
+        onClick={handleAssinar}
+        disabled={loading}
+        className="flex items-center gap-1 font-semibold underline underline-offset-2 whitespace-nowrap shrink-0"
+      >
+        <CreditCard className="w-3.5 h-3.5" />
+        {loading ? 'Aguarde...' : 'Assinar agora'}
+      </button>
+    </div>
+  )
 }
 
 export function AppShell({ children, psychologist }: AppShellProps) {
@@ -187,6 +240,9 @@ export function AppShell({ children, psychologist }: AppShellProps) {
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
+
+        {/* Trial/payment banner */}
+        <TrialBanner psychologist={psychologist} />
 
         {/* Page content */}
         <main className="flex-1 pb-20 md:pb-0">{children}</main>
