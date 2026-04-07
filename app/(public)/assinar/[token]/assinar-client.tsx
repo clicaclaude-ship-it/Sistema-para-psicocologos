@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
-import { createClient } from '@/lib/supabase/client'
 import { maskCPF } from '@/lib/utils'
 
 interface AssinarClientProps {
@@ -34,27 +33,26 @@ export function AssinarClient({
   const [agreed, setAgreed] = useState(false)
   const [signing, setSigning] = useState(false)
   const [done, setDone] = useState(!!signedAt)
+  const [finalName, setFinalName] = useState(signedName ?? '')
 
   async function handleSign() {
     if (!name.trim()) { toast.error('Informe seu nome completo'); return }
     if (!agreed) { toast.error('Você precisa concordar com os termos para assinar'); return }
 
     setSigning(true)
-    const supabase = createClient()
 
-    const { error } = await supabase
-      .from('contracts')
-      .update({
-        signed_at: new Date().toISOString(),
-        signed_name: name.trim(),
-        signed_cpf: cpf || null,
-      })
-      .eq('id', contractId)
-      .is('signed_at', null)
+    const res = await fetch('/api/contratos/assinar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contractId, name: name.trim(), cpf }),
+    })
 
-    if (error) {
-      toast.error('Erro ao assinar o contrato', { description: error.message })
+    const data = await res.json()
+
+    if (!res.ok) {
+      toast.error('Erro ao assinar o contrato', { description: data.error })
     } else {
+      setFinalName(name.trim())
       setDone(true)
       toast.success('Contrato assinado com sucesso!')
     }
@@ -72,12 +70,12 @@ export function AssinarClient({
             <h1 className="text-xl font-bold text-[#1E2A38]">Contrato assinado!</h1>
             <p className="text-muted-foreground text-sm">
               {signedAt
-                ? `Este contrato foi assinado por ${signedName ?? name} em ${new Date(signedAt).toLocaleDateString('pt-BR')}.`
-                : `O contrato foi assinado com sucesso por ${name}.`}
+                ? `Este contrato foi assinado por ${signedName ?? finalName} em ${new Date(signedAt).toLocaleDateString('pt-BR')}.`
+                : `O contrato foi assinado com sucesso por ${finalName}.`}
             </p>
             <div className="flex items-center gap-1.5 justify-center text-xs text-muted-foreground">
               <Shield className="w-3.5 h-3.5" />
-              Assinatura digital registrada com data e hora
+              Data, hora e IP registrados como prova de assinatura (Lei 14.063/2020)
             </div>
           </CardContent>
         </Card>
@@ -122,7 +120,7 @@ export function AssinarClient({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="sign_cpf">CPF (opcional)</Label>
+              <Label htmlFor="sign_cpf">CPF (opcional, mas recomendado para validade jurídica)</Label>
               <Input
                 id="sign_cpf"
                 value={cpf}
@@ -164,9 +162,14 @@ export function AssinarClient({
               Assinar digitalmente
             </Button>
 
-            <p className="text-xs text-center text-muted-foreground">
-              Ao clicar em "Assinar digitalmente", a data, hora e seu nome serão registrados como prova de assinatura.
-            </p>
+            <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted rounded-lg p-3">
+              <Shield className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[#4F7CAC]" />
+              <p>
+                Ao assinar, seu nome, CPF, endereço IP e a data/hora exata ficam registrados
+                junto ao hash SHA-256 do documento — constituindo assinatura eletrônica simples
+                nos termos da <strong>Lei 14.063/2020</strong>.
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>

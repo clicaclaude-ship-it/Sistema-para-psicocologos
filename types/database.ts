@@ -93,6 +93,9 @@ export interface Contract {
   signed_at: string | null
   signed_name: string | null
   signed_cpf: string | null
+  signed_ip: string | null
+  content_hash: string | null
+  signed_user_agent: string | null
   created_at: string
 }
 
