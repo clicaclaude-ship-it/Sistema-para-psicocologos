@@ -447,7 +447,7 @@ export function PatientRecord({
         <TabsContent value="avaliacao" className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              {neuroEvals.length} avaliação{neuroEvals.length !== 1 ? 'ões' : ''} registrada{neuroEvals.length !== 1 ? 's' : ''}
+              {neuroEvals.length} {neuroEvals.length === 1 ? 'avaliação registrada' : 'avaliações registradas'}
             </p>
             <Button
               size="sm"
