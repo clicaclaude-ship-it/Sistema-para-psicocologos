@@ -39,10 +39,13 @@ CREATE TABLE IF NOT EXISTS contracts (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE contracts ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "contracts_own" ON contracts FOR ALL USING (psychologist_id = auth.uid());
+DROP POLICY IF EXISTS "contracts_own" ON contracts;
+DROP POLICY IF EXISTS "contracts_public_sign" ON contracts;
+DROP POLICY IF EXISTS "contracts_public_update" ON contracts;
+CREATE POLICY "contracts_own" ON contracts FOR ALL USING (psychologist_id = auth.uid());
 -- Permitir leitura pública para assinatura (via token único)
-CREATE POLICY IF NOT EXISTS "contracts_public_sign" ON contracts FOR SELECT USING (true);
-CREATE POLICY IF NOT EXISTS "contracts_public_update" ON contracts FOR UPDATE USING (signed_at IS NULL);
+CREATE POLICY "contracts_public_sign" ON contracts FOR SELECT USING (true);
+CREATE POLICY "contracts_public_update" ON contracts FOR UPDATE USING (signed_at IS NULL);
 
 -- 5. Laudos table
 CREATE TABLE IF NOT EXISTS laudos (
@@ -68,4 +71,5 @@ CREATE TABLE IF NOT EXISTS laudos (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE laudos ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "laudos_own" ON laudos FOR ALL USING (psychologist_id = auth.uid());
+DROP POLICY IF EXISTS "laudos_own" ON laudos;
+CREATE POLICY "laudos_own" ON laudos FOR ALL USING (psychologist_id = auth.uid());
