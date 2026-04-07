@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import {
   Select,
   SelectContent,
@@ -27,13 +28,33 @@ function pad(n: number | string) {
   return String(n).padStart(2, '0')
 }
 
+function parseDate(value?: string) {
+  if (value && value.length === 10) {
+    const parts = value.split('-')
+    return { year: parts[0] ?? '', month: parts[1] ?? '', day: parts[2] ?? '' }
+  }
+  return { year: '', month: '', day: '' }
+}
+
 export function DatePicker({ value, onChange }: DatePickerProps) {
-  const raw = value && value.length === 10 ? value.split('-') : ['', '', '']
-  const year = raw[0] ?? ''
-  const month = raw[1] ?? ''
-  const day = raw[2] ?? ''
+  const parsed = parseDate(value)
+  // Estado interno para guardar seleções parciais (ex: escolheu dia mas ainda não escolheu mês/ano)
+  const [day, setDay] = useState(parsed.day)
+  const [month, setMonth] = useState(parsed.month)
+  const [year, setYear] = useState(parsed.year)
+
+  // Sincroniza quando o value externo muda (ex: ao carregar dados de edição)
+  useEffect(() => {
+    const p = parseDate(value)
+    setDay(p.day)
+    setMonth(p.month)
+    setYear(p.year)
+  }, [value])
 
   function update(newDay: string, newMonth: string, newYear: string) {
+    setDay(newDay)
+    setMonth(newMonth)
+    setYear(newYear)
     if (newDay && newMonth && newYear) {
       onChange(`${newYear}-${pad(newMonth)}-${pad(newDay)}`)
     } else {
