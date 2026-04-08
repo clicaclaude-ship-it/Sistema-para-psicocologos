@@ -58,24 +58,34 @@ function PlanosContent() {
 
   async function handleAssinar() {
     setLoading(true)
-    const res = await fetch('/api/stripe/checkout', { method: 'POST' })
-    const data = await res.json()
-    if (data.url) {
-      window.location.href = data.url
-    } else {
-      toast.error('Erro ao iniciar pagamento', { description: data.error })
+    try {
+      const res = await fetch('/api/stripe/checkout', { method: 'POST' })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        toast.error('Erro ao iniciar pagamento', { description: data.error ?? 'Tente novamente.' })
+        setLoading(false)
+      }
+    } catch {
+      toast.error('Erro ao conectar com o servidor. Tente novamente.')
       setLoading(false)
     }
   }
 
   async function handlePortal() {
     setLoading(true)
-    const res = await fetch('/api/stripe/portal', { method: 'POST' })
-    const data = await res.json()
-    if (data.url) {
-      window.location.href = data.url
-    } else {
-      toast.error('Erro ao abrir portal', { description: data.error })
+    try {
+      const res = await fetch('/api/stripe/portal', { method: 'POST' })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        toast.error('Erro ao abrir portal', { description: data.error ?? 'Tente novamente.' })
+        setLoading(false)
+      }
+    } catch {
+      toast.error('Erro ao conectar com o servidor. Tente novamente.')
       setLoading(false)
     }
   }

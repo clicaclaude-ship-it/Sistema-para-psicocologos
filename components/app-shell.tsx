@@ -63,10 +63,14 @@ function TrialBanner({ psychologist }: { psychologist: Psychologist | null }) {
 
   async function handleAssinar() {
     setLoading(true)
-    const res = await fetch('/api/stripe/checkout', { method: 'POST' })
-    const data = await res.json()
-    if (data.url) window.location.href = data.url
-    else setLoading(false)
+    try {
+      const res = await fetch('/api/stripe/checkout', { method: 'POST' })
+      const data = await res.json()
+      if (data.url) window.location.href = data.url
+      else setLoading(false)
+    } catch {
+      setLoading(false)
+    }
   }
 
   const bg = expired || isPastDue ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'
