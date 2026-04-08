@@ -56,7 +56,8 @@ export async function POST(req: NextRequest) {
       cancel_url: `${origin}/planos?pagamento=cancelado`,
       subscription_data: {
         metadata: { supabase_user_id: user.id },
-        trial_end: Math.floor(Date.now() / 1000),
+        // Sem trial_end: o período de teste é controlado pelo nosso DB,
+        // o Stripe começa a cobrar imediatamente após a assinatura
       },
       allow_promotion_codes: true,
       locale: 'pt-BR',
