@@ -14,6 +14,7 @@ import {
   FileSignature,
   AlertTriangle,
   CreditCard,
+  BadgeCheck,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -182,6 +183,12 @@ export function AppShell({ children, psychologist }: AppShellProps) {
                 <User className="w-4 h-4" />
                 Meu perfil
               </DropdownMenuItem>
+              <DropdownMenuItem
+                render={<Link href="/planos" className="gap-2" />}
+              >
+                <BadgeCheck className="w-4 h-4" />
+                Meu plano
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={handleLogout}
@@ -228,6 +235,12 @@ export function AppShell({ children, psychologist }: AppShellProps) {
               >
                 <User className="w-4 h-4" />
                 Meu perfil
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                render={<Link href="/planos" className="gap-2" />}
+              >
+                <BadgeCheck className="w-4 h-4" />
+                Meu plano
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
