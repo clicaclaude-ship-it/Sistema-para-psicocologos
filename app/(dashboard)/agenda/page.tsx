@@ -14,7 +14,7 @@ import {
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { toast } from 'sonner'
-import { Loader2, Plus, X, Check, Ban } from 'lucide-react'
+import { Loader2, Plus, X, Check, Ban, CalendarClock, MapPin } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -91,7 +91,7 @@ interface CalendarEvent {
 
 interface ModalState {
   open: boolean
-  mode: 'create' | 'view'
+  mode: 'create' | 'view' | 'reschedule'
   appointment?: Appointment & { patient_name?: string }
   slotStart?: Date
 }
@@ -103,6 +103,7 @@ interface FormState {
   duration_min: number
   type: Appointment['type']
   notes: string
+  location: string
   recurrence: Appointment['recurrence']
   recurrence_end_date: string
 }
@@ -114,6 +115,7 @@ const DEFAULT_FORM: FormState = {
   duration_min: 50,
   type: 'consulta',
   notes: '',
+  location: '',
   recurrence: 'none',
   recurrence_end_date: '',
 }
@@ -132,6 +134,7 @@ export default function AgendaPage() {
   const [saving, setSaving] = useState(false)
   const [modal, setModal] = useState<ModalState>({ open: false, mode: 'create' })
   const [form, setForm] = useState<FormState>(DEFAULT_FORM)
+  const [rescheduleForm, setRescheduleForm] = useState({ date: '', time: '' })
 
   // Detect mobile
   useEffect(() => {
@@ -258,6 +261,7 @@ export default function AgendaPage() {
       duration_min: form.duration_min,
       type: form.type,
       notes: form.notes || null,
+      location: form.location || null,
       status: 'agendado',
       recurrence: form.recurrence,
       recurrence_end_date: form.recurrence_end_date || null,
@@ -284,6 +288,7 @@ export default function AgendaPage() {
           duration_min: form.duration_min,
           type: form.type,
           notes: form.notes || null,
+          location: form.location || null,
           status: 'agendado',
           recurrence: form.recurrence,
           recurrence_end_date: form.recurrence_end_date || null,
@@ -327,6 +332,39 @@ export default function AgendaPage() {
 
   async function handleMarkDone(id: string) {
     await handleUpdateStatus(id, 'realizado')
+  }
+
+  function openReschedule() {
+    if (!modal.appointment) return
+    const current = new Date(modal.appointment.scheduled_at)
+    setRescheduleForm({
+      date: format(current, 'yyyy-MM-dd'),
+      time: format(current, 'HH:mm'),
+    })
+    setModal((prev) => ({ ...prev, mode: 'reschedule' }))
+  }
+
+  async function handleReschedule() {
+    if (!modal.appointment) return
+    if (!rescheduleForm.date || !rescheduleForm.time) {
+      toast.error('Informe a nova data e horário')
+      return
+    }
+    setSaving(true)
+    const newScheduledAt = new Date(`${rescheduleForm.date}T${rescheduleForm.time}:00`).toISOString()
+    const { error } = await supabase
+      .from('appointments')
+      .update({ scheduled_at: newScheduledAt, status: 'agendado' })
+      .eq('id', modal.appointment.id)
+
+    if (error) {
+      toast.error('Erro ao reagendar', { description: error.message })
+    } else {
+      toast.success('Consulta reagendada!')
+      closeModal()
+      loadAppointments(currentDate)
+    }
+    setSaving(false)
   }
 
   // ── Event style ────────────────────────────────────────────────────────────
@@ -434,7 +472,11 @@ export default function AgendaPage() {
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {modal.mode === 'create' ? 'Nova consulta' : 'Detalhes da consulta'}
+              {modal.mode === 'create'
+                ? 'Nova consulta'
+                : modal.mode === 'reschedule'
+                ? 'Reagendar consulta'
+                : 'Detalhes da consulta'}
             </DialogTitle>
           </DialogHeader>
 
@@ -515,6 +557,16 @@ export default function AgendaPage() {
                 </div>
               </div>
 
+              {/* Location */}
+              <div className="space-y-1.5">
+                <Label>Local</Label>
+                <Input
+                  placeholder="Ex: Sala 01, Andar 2, Online..."
+                  value={form.location}
+                  onChange={(e) => setForm({ ...form, location: e.target.value })}
+                />
+              </div>
+
               {/* Recurrence */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -569,6 +621,57 @@ export default function AgendaPage() {
                 </Button>
               </div>
             </div>
+
+          ) : modal.mode === 'reschedule' && apt ? (
+            <div className="space-y-4 py-2">
+              {/* Appointment summary */}
+              <div className="rounded-lg bg-muted/50 p-3 text-sm space-y-1">
+                <p className="font-medium text-[#1E2A38]">{apt.patient_name}</p>
+                <p className="text-muted-foreground">
+                  Data atual:{' '}
+                  {format(new Date(apt.scheduled_at), "d 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Nova data *</Label>
+                  <Input
+                    type="date"
+                    value={rescheduleForm.date}
+                    onChange={(e) => setRescheduleForm({ ...rescheduleForm, date: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Novo horário *</Label>
+                  <Input
+                    type="time"
+                    value={rescheduleForm.time}
+                    onChange={(e) => setRescheduleForm({ ...rescheduleForm, time: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                O status da consulta voltará para <strong>Agendado</strong> após o reagendamento.
+              </p>
+
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setModal((prev) => ({ ...prev, mode: 'view' }))}
+                  disabled={saving}
+                >
+                  Voltar
+                </Button>
+                <Button className="flex-1" onClick={handleReschedule} disabled={saving}>
+                  {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Confirmar reagendamento
+                </Button>
+              </div>
+            </div>
+
           ) : apt ? (
             <div className="space-y-4 py-2">
               {/* Info */}
@@ -625,6 +728,18 @@ export default function AgendaPage() {
                   </div>
                 </div>
 
+                {apt.location && (
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
+                      Local
+                    </p>
+                    <p className="text-sm flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      {apt.location}
+                    </p>
+                  </div>
+                )}
+
                 {apt.notes && (
                   <div>
                     <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
@@ -645,7 +760,7 @@ export default function AgendaPage() {
                     onClick={() => handleMarkDone(apt.id)}
                   >
                     <Check className="w-3.5 h-3.5" />
-                    Marcar como realizado
+                    Realizado
                   </Button>
                   {apt.status === 'agendado' && (
                     <Button
@@ -657,6 +772,15 @@ export default function AgendaPage() {
                       Confirmar
                     </Button>
                   )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 text-purple-600 border-purple-300 hover:bg-purple-50"
+                    onClick={openReschedule}
+                  >
+                    <CalendarClock className="w-3.5 h-3.5" />
+                    Reagendar
+                  </Button>
                   <Button
                     size="sm"
                     variant="outline"

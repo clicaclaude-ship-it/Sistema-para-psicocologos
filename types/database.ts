@@ -46,6 +46,7 @@ export interface Appointment {
   type: 'consulta' | 'avaliacao' | 'devolutiva' | 'retorno'
   status: 'agendado' | 'confirmado' | 'realizado' | 'cancelado' | 'falta'
   notes: string | null
+  location: string | null
   recurrence: 'none' | 'weekly' | 'biweekly' | 'monthly'
   recurrence_end_date: string | null
   recurrence_parent_id: string | null
