@@ -98,6 +98,7 @@ interface ModalState {
 
 interface FormState {
   patient_id: string
+  visitor_name: string
   date: string
   time: string
   duration_min: number
@@ -110,6 +111,7 @@ interface FormState {
 
 const DEFAULT_FORM: FormState = {
   patient_id: '',
+  visitor_name: '',
   date: '',
   time: '09:00',
   duration_min: 50,
@@ -195,7 +197,7 @@ export default function AgendaPage() {
       const mapped: CalendarEvent[] = (data ?? []).map((apt: Appointment & { patients?: { full_name: string } | null }) => {
         const start = new Date(apt.scheduled_at)
         const end = new Date(start.getTime() + apt.duration_min * 60000)
-        const patientName = apt.patients?.full_name ?? 'Paciente'
+        const patientName = apt.patients?.full_name ?? apt.visitor_name ?? 'Consulta inicial'
         return {
           id: apt.id,
           title: `${apt.recurrence !== 'none' ? '↻ ' : ''}${patientName} — ${TYPE_LABELS[apt.type]}`,
@@ -236,10 +238,6 @@ export default function AgendaPage() {
   // ── CRUD ──────────────────────────────────────────────────────────────────
 
   async function handleCreate() {
-    if (!form.patient_id) {
-      toast.error('Selecione um paciente')
-      return
-    }
     if (!form.date || !form.time) {
       toast.error('Informe data e horário')
       return
@@ -256,7 +254,8 @@ export default function AgendaPage() {
 
     const { data: created, error } = await supabase.from('appointments').insert({
       psychologist_id: userData.user.id,
-      patient_id: form.patient_id,
+      patient_id: form.patient_id || null,
+      visitor_name: !form.patient_id ? (form.visitor_name || null) : null,
       scheduled_at,
       duration_min: form.duration_min,
       type: form.type,
@@ -283,7 +282,8 @@ export default function AgendaPage() {
         if (current > endDate) break
         recurrences.push({
           psychologist_id: userData.user.id,
-          patient_id: form.patient_id,
+          patient_id: form.patient_id || null,
+          visitor_name: !form.patient_id ? (form.visitor_name || null) : null,
           scheduled_at: current.toISOString(),
           duration_min: form.duration_min,
           type: form.type,
@@ -484,13 +484,13 @@ export default function AgendaPage() {
             <div className="space-y-4 py-2">
               {/* Patient */}
               <div className="space-y-1.5">
-                <Label>Paciente *</Label>
+                <Label>Paciente</Label>
                 <select
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={form.patient_id}
-                  onChange={(e) => setForm({ ...form, patient_id: e.target.value })}
+                  onChange={(e) => setForm({ ...form, patient_id: e.target.value, visitor_name: '' })}
                 >
-                  <option value="">Selecione um paciente...</option>
+                  <option value="">Sem paciente cadastrado</option>
                   {patients.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.full_name}
@@ -498,6 +498,18 @@ export default function AgendaPage() {
                   ))}
                 </select>
               </div>
+
+              {/* Visitor name — only when no patient selected */}
+              {!form.patient_id && (
+                <div className="space-y-1.5">
+                  <Label>Nome do visitante</Label>
+                  <Input
+                    placeholder="Ex: João Silva (conversa inicial)"
+                    value={form.visitor_name}
+                    onChange={(e) => setForm({ ...form, visitor_name: e.target.value })}
+                  />
+                </div>
+              )}
 
               {/* Date + Time */}
               <div className="grid grid-cols-2 gap-3">
